@@ -11,7 +11,6 @@
 #pragma mark - // IMPORTS (Private) //
 
 #import "FirebaseController+Auth.h"
-#import "AKDebugger.h"
 #import "AKGenerics.h"
 #import "FirebaseQuery+FQuery.h"
 
@@ -73,8 +72,6 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 #pragma mark - // SETTERS AND GETTERS //
 
 - (void)setFirebase:(Firebase *)firebase {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeSetter tags:@[AKD_REMOTE_DATA] message:nil];
-    
     if ([firebase isEqual:_firebase]) {
         return;
     }
@@ -92,7 +89,6 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 }
 
 - (void)setIsConnected:(BOOL)isConnected {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeSetter tags:@[AKD_REMOTE_DATA, AKD_CONNECTIVITY] message:nil];
     
     if (isConnected == _isConnected) {
         return;
@@ -114,8 +110,6 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 #pragma mark - // INITS AND LOADS //
 
 - (id)init {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeSetup tags:@[AKD_REMOTE_DATA] message:nil];
-    
     self = [super init];
     if (self) {
         [self setup];
@@ -125,8 +119,6 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 }
 
 - (void)awakeFromNib {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_REMOTE_DATA] message:nil];
-    
     [super awakeFromNib];
     
     [self setup];
@@ -135,8 +127,6 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 #pragma mark - // PUBLIC METHODS (General) //
 
 + (void)setup:(NSString *)projectName {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeSetup tags:@[AKD_REMOTE_DATA] message:nil];
-    
     FirebaseController *sharedController = [FirebaseController sharedController];
     if (!sharedController) {
         [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeWarning methodType:AKMethodTypeSetup tags:@[AKD_REMOTE_DATA] message:[NSString stringWithFormat:@"Could not initialize %@", NSStringFromClass([FirebaseController class])]];
@@ -146,28 +136,20 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 }
 
 + (BOOL)isConnected {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeGetter tags:@[AKD_REMOTE_DATA, AKD_CONNECTIVITY] message:nil];
-    
     return [FirebaseController sharedController].isConnected;
 }
 
 + (void)connect {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeSetup tags:@[AKD_REMOTE_DATA, AKD_CONNECTIVITY] message:nil];
-    
     [Firebase goOnline];
 }
 
 + (void)disconnect {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeSetup tags:@[AKD_REMOTE_DATA, AKD_CONNECTIVITY] message:nil];
-    
     [Firebase goOffline];
 }
 
 #pragma mark - // PUBLIC METHODS (Data) //
 
 + (void)saveObject:(id)object toPath:(NSString *)path withCompletion:(void (^)(BOOL success, NSError *error))completionBlock {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_REMOTE_DATA] message:nil];
-    
     [FirebaseController setObject:object toPath:path withCompletion:^(BOOL success, NSError *error) {
         
         if (success) {
@@ -182,8 +164,6 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 }
 
 + (void)updateObjectAtPath:(NSString *)path withDictionary:(NSDictionary *)dictionary andCompletion:(void (^)(BOOL success, NSError *error))completionBlock {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_REMOTE_DATA] message:nil];
-    
     NSMutableDictionary *mutableCopy = [dictionary mutableCopy];
     NSMutableDictionary *childValues = [NSMutableDictionary dictionary];
     NSString *key;
@@ -206,11 +186,6 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
     }
     Firebase *directory = [[FirebaseController sharedController].firebase childByAppendingPath:path];
     [directory updateChildValues:childValues withCompletionBlock:^(NSError *error, Firebase *ref) {
-        
-        if (error) {
-            [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeError methodType:AKMethodTypeUnspecified tags:@[AKD_REMOTE_DATA] message:[NSString stringWithFormat:@"%@, %@", error, error.userInfo]];
-        }
-        
         NSMutableDictionary *persistedValues = [FirebaseController sharedController].persistedValues;
         for (NSString *path in childValues.allKeys) {
             if ([persistedValues.allKeys containsObject:path]) {
@@ -225,8 +200,6 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 }
 
 + (void)setOfflineValue:(id)offlineValue forObjectAtPath:(NSString *)path withPersistence:(BOOL)persist andCompletion:(void (^)(BOOL success, NSError *error))completionBlock {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_REMOTE_DATA] message:nil];
-    
     if (persist) {
         [[FirebaseController sharedController].offlineValues setObject:offlineValue forKey:path];
     }
@@ -234,14 +207,10 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 }
 
 + (void)setOnlineValue:(id)onlineValue forObjectAtPath:(NSString *)path withPersistence:(BOOL)persist {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_REMOTE_DATA] message:nil];
-    
     [[FirebaseController sharedController].onlineValues setObject:@{FirebaseKeyOnlineValue : onlineValue, FirebaseKeyPersistValue : [NSNumber numberWithBool:persist]} forKey:path];
 }
 
 + (void)persistOnlineValueForObjectAtPath:(NSString *)path {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_REMOTE_DATA] message:nil];
-    
     [FirebaseController getObjectAtPath:path withCompletion:^(id object) {
         
         [[FirebaseController sharedController].persistedValues setObject:(object ? object : [NSNull null]) forKey:path];
@@ -249,28 +218,20 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 }
 
 + (void)clearOfflineValueForObjectAtPath:(NSString *)path {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_REMOTE_DATA] message:nil];
-    
     [[FirebaseController sharedController].offlineValues removeObjectForKey:path];
 }
 
 + (void)clearOnlineValueForObjectAtPath:(NSString *)path {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_REMOTE_DATA] message:nil];
-    
     [[FirebaseController sharedController].onlineValues removeObjectForKey:path];
 }
 
 + (void)clearPersistedValueForObjectAtPath:(NSString *)path {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_REMOTE_DATA] message:nil];
-    
     [[FirebaseController sharedController].persistedValues removeObjectForKey:path];
 }
 
 #pragma mark - // PUBLIC METHODS (Queries) //
 
 + (void)getObjectAtPath:(NSString *)path withCompletion:(void (^)(id object))completionBlock {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeGetter tags:@[AKD_REMOTE_DATA] message:nil];
-    
     Firebase *directory = [[FirebaseController sharedController].firebase childByAppendingPath:path];
     [directory observeSingleEventOfType:FEventTypeValue withBlock:^(FDataSnapshot *snapshot) {
         [FirebaseController performCompletionBlock:completionBlock withSnapshot:snapshot];
@@ -279,8 +240,6 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 
 
 + (void)getObjectsAtPath:(NSString *)path withQueries:(NSArray <FirebaseQuery *> *)queries andCompletion:(void (^)(id result))completionBlock {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeGetter tags:@[AKD_REMOTE_DATA] message:nil];
-    
     Firebase *directory = [[FirebaseController sharedController].firebase childByAppendingPath:path];
     if (!queries || !queries.count) {
         [directory observeSingleEventOfType:FEventTypeValue withBlock:^(FDataSnapshot *snapshot) {
@@ -308,71 +267,46 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 #pragma mark - // PUBLIC METHODS (Observers) //
 
 + (void)observeValueChangedAtPath:(NSString *)path withBlock:(void (^)(id value))block {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_REMOTE_DATA] message:nil];
-    
     [FirebaseController observeEvent:FEventTypeValue atPath:path withBlock:block];
 }
 
 + (void)observeChildAddedAtPath:(NSString *)path withBlock:(void (^)(id child))block {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_REMOTE_DATA] message:nil];
-    
     [FirebaseController observeEvent:FEventTypeChildAdded atPath:path withBlock:block];
 }
 
 + (void)observeChildChangedAtPath:(NSString *)path withBlock:(void (^)(id child))block {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_REMOTE_DATA] message:nil];
-    
     [FirebaseController observeEvent:FEventTypeChildChanged atPath:path withBlock:block];
 }
 
 + (void)observeChildRemovedFromPath:(NSString *)path withBlock:(void (^)(id child))block {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_REMOTE_DATA] message:nil];
-    
     [FirebaseController observeEvent:FEventTypeChildRemoved atPath:path withBlock:block];
 }
 
 + (void)removeValueChangedObserverAtPath:(NSString *)path {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_REMOTE_DATA] message:nil];
-    
     [FirebaseController removeObserverAtPath:path forEvent:FEventTypeValue];
 }
 
 + (void)removeChildAddedObserverAtPath:(NSString *)path {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_REMOTE_DATA] message:nil];
-    
     [FirebaseController removeObserverAtPath:path forEvent:FEventTypeChildAdded];
 }
 
 + (void)removeChildChangedObserverAtPath:(NSString *)path {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_REMOTE_DATA] message:nil];
-    
     [FirebaseController removeObserverAtPath:path forEvent:FEventTypeChildChanged];
 }
 
 + (void)removeChildRemovedObserverAtPath:(NSString *)path {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_REMOTE_DATA] message:nil];
-    
     [FirebaseController removeObserverAtPath:path forEvent:FEventTypeChildRemoved];
 }
 
 #pragma mark - // CATEGORY METHODS (Auth) //
 
 + (NSDictionary *)authData {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeGetter tags:@[AKD_ACCOUNTS] message:nil];
-    
     FAuthData *authData = [FirebaseController sharedController].firebase.authData;
     return [FirebaseController dictionaryForAuthData:authData];
 }
 
 + (void)signUpWithEmail:(NSString *)email password:(NSString *)password success:(void (^)(NSDictionary *result))successBlock failure:(void (^)(NSError *error))failureBlock {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeCreator tags:@[AKD_ACCOUNTS] message:nil];
-    
     [[FirebaseController sharedController].firebase createUser:email password:password withValueCompletionBlock:^(NSError *error, NSDictionary *result) {
-        
-        if (error) {
-            [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeError methodType:AKMethodTypeCreator tags:@[AKD_ACCOUNTS] message:[NSString stringWithFormat:@"%@, %@", error, error.userInfo]];
-        }
-        
         if (!result) {
             failureBlock(error);
             return;
@@ -383,14 +317,7 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 }
 
 + (void)loginUserWithEmail:(NSString *)email password:(NSString *)password success:(void (^)(NSDictionary *result))successBlock failure:(void (^)(NSError *error))failureBlock {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_ACCOUNTS] message:nil];
-    
     [[FirebaseController sharedController].firebase authUser:email password:password withCompletionBlock:^(NSError *error, FAuthData *authData) {
-        
-        if (error) {
-            [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeError methodType:AKMethodTypeCreator tags:@[AKD_ACCOUNTS] message:[NSString stringWithFormat:@"%@, %@", error, error.userInfo]];
-        }
-        
         if (!authData) {
             failureBlock(error);
             return;
@@ -401,14 +328,10 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 }
 
 + (void)resetPasswordForUserWithEmail:(NSString *)email withCompletionBlock:(void(^)(NSError *error))completionBlock {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_ACCOUNTS] message:nil];
-    
     [[FirebaseController sharedController].firebase resetPasswordForUser:email withCompletionBlock:completionBlock];
 }
 
 + (void)changeEmailForUserWithEmail:(NSString *)email password:(NSString *)password toNewEmail:(NSString *)newEmail withCompletionBlock:(void(^)(NSError *error))completionBlock {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_ACCOUNTS] message:nil];
-    
     [[FirebaseController sharedController].firebase changeEmailForUser:email password:password toNewEmail:newEmail withCompletionBlock:^(NSError *error){
         
         if (!error) {
@@ -422,13 +345,10 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 }
 
 + (void)changePasswordForUserWithEmail:(NSString *)email fromOld:(NSString *)oldPassword toNew:(NSString *)newPassword withCompletionBlock:(void(^)(NSError *error))completionBlock {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_ACCOUNTS] message:nil];
-    
     [[FirebaseController sharedController].firebase changePasswordForUser:email fromOld:oldPassword toNew:newPassword withCompletionBlock:completionBlock];
 }
 
 + (void)logout {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_ACCOUNTS] message:nil];
     
     [[FirebaseController sharedController].firebase unauth];
 }
@@ -440,8 +360,6 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 #pragma mark - // PRIVATE METHODS (General) //
 
 + (instancetype)sharedController {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeGetter tags:@[AKD_REMOTE_DATA] message:nil];
-    
     static FirebaseController *_sharedController = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
@@ -451,8 +369,6 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 }
 
 - (void)setup {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeSetup tags:@[AKD_REMOTE_DATA] message:nil];
-    
     //    [Firebase defaultConfig].persistenceEnabled = YES;
     
     _isConnected = YES;
@@ -463,14 +379,10 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 }
 
 - (void)setProjectName:(NSString *)projectName {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeSetup tags:@[AKD_REMOTE_DATA] message:nil];
-    
     self.firebase = [[Firebase alloc] initWithUrl:[NSString stringWithFormat:@"https://%@.firebaseio.com", projectName]];
 }
 
 + (void)setObject:(id)object toPath:(NSString *)path withCompletion:(void (^)(BOOL success, NSError *error))completionBlock {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeSetter tags:@[AKD_REMOTE_DATA] message:nil];
-    
     Firebase *directory = [[FirebaseController sharedController].firebase childByAppendingPath:path];
     [directory setValue:object withCompletionBlock:^(NSError *error, Firebase *ref) {
         
@@ -485,15 +397,8 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 }
 
 + (void)setOfflineValue:(id)offlineValue forObjectAtPath:(NSString *)path withCompletion:(void (^)(BOOL success, NSError *error))completionBlock {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_REMOTE_DATA] message:nil];
-    
     Firebase *directory = [[FirebaseController sharedController].firebase childByAppendingPath:path];
     [directory onDisconnectSetValue:offlineValue withCompletionBlock:^(NSError *error, Firebase *ref) {
-        
-        if (error) {
-            [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeError methodType:AKMethodTypeUnspecified tags:@[AKD_REMOTE_DATA] message:[NSString stringWithFormat:@"%@, %@", error, error.userInfo]];
-        }
-        
         if (completionBlock) {
             completionBlock(error != nil, error);
         }
@@ -501,8 +406,6 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 }
 
 - (void)setOnlineValues {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeSetup tags:@[AKD_REMOTE_DATA] message:nil];
-    
     for (NSString *path in self.persistedValues.allKeys) {
         
         if ([self.onlineValues.allKeys containsObject:path]) {
@@ -527,16 +430,12 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 }
 
 - (void)persistOfflineValues {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeSetup tags:@[AKD_REMOTE_DATA] message:nil];
-    
     for (NSString *path in self.offlineValues.allKeys) {
         [FirebaseController setOfflineValue:self.offlineValues[path] forObjectAtPath:path withCompletion:nil];
     }
 }
 
 + (void)observeEvent:(FEventType)event atPath:(NSString *)path withBlock:(void (^)(id object))block {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_REMOTE_DATA] message:nil];
-    
     if ((event == FEventTypeValue) || (event == FEventTypeChildAdded)) {
         Firebase *directory = [[FirebaseController sharedController].firebase childByAppendingPath:path];
         [directory observeSingleEventOfType:FEventTypeValue withBlock:^(FDataSnapshot *snapshot) {
@@ -550,8 +449,6 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 }
 
 + (void)observeEvent:(FEventType)event atPath:(NSString *)path withBlock:(void (^)(id object))block andThreshold:(NSUInteger)threshold {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_REMOTE_DATA] message:nil];
-    
     FirebaseHandle handle = [[[FirebaseController sharedController].firebase childByAppendingPath:path] observeEventType:event withBlock:^(FDataSnapshot *snapshot) {
         NSString *key = [FirebaseController keyForPath:path andEvent:event];
         NSNumber *thresholdValue = [FirebaseController sharedController].observers[key][FirebaseObserverConnectionThresholdKey];
@@ -562,10 +459,6 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
         }
         
         [FirebaseController performCompletionBlock:block withSnapshot:snapshot];
-    } withCancelBlock:^(NSError *error) {
-        if (error) {
-            [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeError methodType:AKMethodTypeUnspecified tags:@[AKD_REMOTE_DATA] message:[NSString stringWithFormat:@"%@, %@", error, error.userInfo]];
-        }
     }];
     
     NSMutableDictionary *info = [NSMutableDictionary dictionaryWithObjects:@[[NSNumber numberWithInteger:handle], [NSNumber numberWithInteger:threshold], @0] forKeys:@[FirebaseObserverHandleKey, FirebaseObserverConnectionThresholdKey, FirebaseObserverConnectionCountKey]];
@@ -574,8 +467,6 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 }
 
 + (void)removeObserverAtPath:(NSString *)path forEvent:(FEventType)event {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_REMOTE_DATA] message:nil];
-    
     NSString *key = [FirebaseController keyForPath:path andEvent:event];
     NSNumber *handleValue = [FirebaseController sharedController].observers[key][FirebaseObserverHandleKey];
     FirebaseHandle handle = handleValue.integerValue;
@@ -584,8 +475,6 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 }
 
 + (NSString *)stringForEvent:(FEventType)event {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeGetter tags:@[AKD_REMOTE_DATA] message:nil];
-    
     switch (event) {
         case FEventTypeValue:
             return FirebaseObserverValueChanged;
@@ -601,8 +490,6 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 }
 
 + (void)performCompletionBlock:(void (^)(id result))completionBlock withSnapshot:(FDataSnapshot *)snapshot {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_REMOTE_DATA] message:nil];
-    
     NSString *key = snapshot.key;
     id value = snapshot.value;
     if ([value isKindOfClass:[NSArray class]]) {
@@ -614,8 +501,6 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 }
 
 + (NSDictionary *)dictionaryForAuthData:(FAuthData *)authData {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeUnspecified tags:@[AKD_ACCOUNTS] message:nil];
-    
     if (!authData) {
         return nil;
     }
@@ -624,8 +509,6 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 }
 
 + (NSString *)keyForPath:(NSString *)path andEvent:(FEventType)event {
-    [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeMethodName methodType:AKMethodTypeGetter tags:@[AKD_REMOTE_DATA] message:nil];
-    
     return [NSString stringWithFormat:@"%@_%@", path, [FirebaseController stringForEvent:event]];
 }
 
