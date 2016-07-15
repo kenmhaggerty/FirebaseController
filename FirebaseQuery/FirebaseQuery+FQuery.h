@@ -12,7 +12,7 @@
 
 #import "FirebaseQuery.h"
 
-#import <Firebase/Firebase.h>
+@import Firebase;
 
 #pragma mark - // PROTOCOLS //
 
@@ -20,7 +20,7 @@
 
 @interface FirebaseQuery (FQuery)
 
-+ (FQuery *)queryWithQueryItem:(FirebaseQuery *)queryItem andDirectory:(Firebase *)directory;
-+ (FQuery *)appendQueryItem:(FirebaseQuery *)queryItem toQuery:(FQuery *)query;
++ (FIRDatabaseQuery *)queryWithQueryItem:(FirebaseQuery *)queryItem andDirectory:(FIRDatabaseReference *)directory;
++ (FIRDatabaseQuery *)appendQueryItem:(FirebaseQuery *)queryItem toQuery:(FIRDatabaseQuery *)query;
 
 @end

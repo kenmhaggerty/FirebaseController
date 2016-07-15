@@ -24,13 +24,14 @@
 
 // GENERAL //
 
-+ (void)setup:(NSString *)projectName;
++ (void)setup;
 + (BOOL)isConnected;
 + (void)connect;
 + (void)disconnect;
 
 // DATA //
 
++ (void)setPriority:(id)priority forPath:(NSString *)path withCompletion:(void(^)(BOOL success, NSError *error))completionBlock;
 + (void)saveObject:(id)object toPath:(NSString *)path withCompletion:(void (^)(BOOL success, NSError *error))completionBlock;
 + (void)updateObjectAtPath:(NSString *)path withDictionary:(NSDictionary *)dictionary andCompletion:(void (^)(BOOL success, NSError *error))completionBlock;
 + (void)setOfflineValue:(id)offlineValue forObjectAtPath:(NSString *)path withPersistence:(BOOL)persist andCompletion:(void (^)(BOOL success, NSError *error))completionBlock;

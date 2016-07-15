@@ -11,20 +11,18 @@
 #pragma mark - // IMPORTS (Private) //
 
 #import "FirebaseController+Auth.h"
-#import "AKGenerics.h"
 #import "FirebaseQuery+FQuery.h"
 
-#import <Firebase/Firebase.h>
+@import Firebase;
 
 #pragma mark - // DEFINITIONS (Private) //
 
-NSString * const FirebaseIsConnectedDidChangeNotification = @"kNotificationFirebaseController_IsConnectedDidChange;";
-NSString * const FirebaseEmailDidChangeNotification = @"kNotificationFirebaseController_EmailDidChange";
+NSString * const FirebaseNotificationObject = @"object";
 
-NSString * const FirebaseAuthKeyEmail = @"email";
-NSString * const FirebaseAuthKeyUID = @"uid";
-NSString * const FirebaseAuthKeyToken = @"token";
-NSString * const FirebaseAuthKeyProfileImageURL = @"profileImageURL";
+NSString * const FirebaseIsConnectedDidChangeNotification = @"kNotificationFirebaseController_IsConnectedDidChange;";
+
+NSString * const FirebaseUserDidChangeNotification = @"kNotificationFirebaseController_UserDidChange";
+NSString * const FirebaseEmailDidChangeNotification = @"kNotificationFirebaseController_EmailDidChange";
 
 NSString * const FirebaseKeyOnlineValue = @"value";
 NSString * const FirebaseKeyPersistValue = @"persist";
@@ -35,14 +33,16 @@ NSString * const FirebaseObserverChildChanged = @"ChildChanged";
 NSString * const FirebaseObserverChildMoved = @"ChildMoved";
 NSString * const FirebaseObserverChildRemoved = @"ChildRemoved";
 
-NSString * const FirebaseObserverHandleKey = @"handle";
+//NSString * const FirebaseObserverHandleKey = @"handle";
 NSString * const FirebaseObserverConnectionThresholdKey = @"threshold";
 NSString * const FirebaseObserverConnectionCountKey = @"count";
 
 @interface FirebaseController ()
-@property (nonatomic, strong) Firebase *firebase;
-@property (nonatomic) FirebaseHandle firebaseHandle;
+@property (nonatomic, strong) FIRDatabaseReference *database;
+@property (nonatomic) FIRAuthStateDidChangeListenerHandle authenticationListener;
+@property (nonatomic) FIRDatabaseHandle connectionListener;
 @property (nonatomic) BOOL isConnected;
+
 @property (nonatomic, strong) NSMutableDictionary *offlineValues;
 @property (nonatomic, strong) NSMutableDictionary *onlineValues;
 @property (nonatomic, strong) NSMutableDictionary *persistedValues;
@@ -52,18 +52,28 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 
 + (instancetype)sharedController;
 - (void)setup;
-- (void)setProjectName:(NSString *)projectName;
+- (void)teardown;
+
+// GETTERS //
+
++ (FIRDatabaseReference *)database;
+
+// OBSERVERS //
+
+- (void)addObserversToAuth;
+- (void)removeObserversFromAuth;
+
+// OTHER //
 
 + (void)setObject:(id)object toPath:(NSString *)path withCompletion:(void (^)(BOOL success, NSError *error))completionBlock;
 + (void)setOfflineValue:(id)offlineValue forObjectAtPath:(NSString *)path withCompletion:(void (^)(BOOL success, NSError *error))completionBlock;
 - (void)setOnlineValues;
 - (void)persistOfflineValues;
-+ (void)observeEvent:(FEventType)event atPath:(NSString *)path withBlock:(void (^)(id object))block;
-+ (void)removeObserverAtPath:(NSString *)path forEvent:(FEventType)event;
-+ (NSString *)stringForEvent:(FEventType)event;
-+ (void)performCompletionBlock:(void (^)(id result))completionBlock withSnapshot:(FDataSnapshot *)snapshot;
-+ (NSDictionary *)dictionaryForAuthData:(FAuthData *)authData;
-+ (NSString *)keyForPath:(NSString *)path andEvent:(FEventType)event;
++ (void)observeEvent:(FIRDataEventType)event atPath:(NSString *)path withBlock:(void (^)(id object))block;
++ (void)removeAllObserversAtPath:(NSString *)path forEvent:(FIRDataEventType)event;
++ (NSString *)stringForEvent:(FIRDataEventType)event;
++ (void)performCompletionBlock:(void (^)(id result))completionBlock withSnapshot:(FIRDataSnapshot *)snapshot;
++ (NSString *)keyForPath:(NSString *)path andEvent:(FIRDataEventType)event;
 
 @end
 
@@ -71,31 +81,39 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 
 #pragma mark - // SETTERS AND GETTERS //
 
-- (void)setFirebase:(Firebase *)firebase {
-    if ([firebase isEqual:_firebase]) {
+@synthesize database = _database;
+
+- (void)setDatabase:(FIRDatabaseReference *)database {
+    if ([database isEqual:_database]) {
         return;
     }
     
-    if (_firebase) {
-        [_firebase removeObserverWithHandle:self.firebaseHandle];
+    if (_database) {
+        [_database removeObserverWithHandle:self.connectionListener];
     }
     
-    _firebase = firebase;
+    _database = database;
     
-    self.firebaseHandle = [[firebase childByAppendingPath:@".info/connected"] observeEventType:FEventTypeValue withBlock:^(FDataSnapshot *snapshot) {
-        BOOL isConnected = [snapshot.value boolValue];
-        self.isConnected = isConnected;
+    self.connectionListener = [database observeEventType:FIRDataEventTypeValue withBlock:^(FIRDataSnapshot *snapshot) {
+        self.isConnected = [snapshot.value boolValue];
     }];
 }
 
-- (void)setIsConnected:(BOOL)isConnected {
+- (FIRDatabaseReference *)database {
+    if (_database) {
+        return _database;
+    }
     
+    self.database = [[FIRDatabase database] reference];
+    return _database;
+}
+
+- (void)setIsConnected:(BOOL)isConnected {
     if (isConnected == _isConnected) {
         return;
     }
     
-    NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
-    [userInfo setObject:[NSNumber numberWithBool:isConnected] forKey:NOTIFICATION_OBJECT_KEY];
+    NSDictionary *userInfo = @{FirebaseNotificationObject : @(isConnected)};
     
     _isConnected = isConnected;
     
@@ -104,10 +122,14 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
         [self persistOfflineValues];
     }
     
-    [AKGenerics postNotificationName:FirebaseIsConnectedDidChangeNotification object:nil userInfo:userInfo];
+    [[NSNotificationCenter defaultCenter] postNotificationName:FirebaseIsConnectedDidChangeNotification object:nil userInfo:userInfo];
 }
 
 #pragma mark - // INITS AND LOADS //
+
+- (void)dealloc {
+    [self teardown];
+}
 
 - (id)init {
     self = [super init];
@@ -126,13 +148,10 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 
 #pragma mark - // PUBLIC METHODS (General) //
 
-+ (void)setup:(NSString *)projectName {
-    FirebaseController *sharedController = [FirebaseController sharedController];
-    if (!sharedController) {
-        [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeWarning methodType:AKMethodTypeSetup tags:@[AKD_REMOTE_DATA] message:[NSString stringWithFormat:@"Could not initialize %@", NSStringFromClass([FirebaseController class])]];
-    }
++ (void)setup {
+    [FIRApp configure];
     
-    [sharedController setProjectName:projectName];
+    [FirebaseController sharedController];
 }
 
 + (BOOL)isConnected {
@@ -140,18 +159,26 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 }
 
 + (void)connect {
-    [Firebase goOnline];
+    [FIRDatabaseReference goOnline];
 }
 
 + (void)disconnect {
-    [Firebase goOffline];
+    [FIRDatabaseReference goOffline];
 }
 
 #pragma mark - // PUBLIC METHODS (Data) //
 
++ (void)setPriority:(id)priority forPath:(NSString *)path withCompletion:(void(^)(BOOL success, NSError *error))completionBlock {
+    FIRDatabaseReference *directory = [[FirebaseController database] child:path];
+    [directory setPriority:priority withCompletionBlock:^(NSError *error, FIRDatabaseReference *ref) {
+        if (completionBlock) {
+            completionBlock(error == nil, error);
+        }
+    }];
+}
+
 + (void)saveObject:(id)object toPath:(NSString *)path withCompletion:(void (^)(BOOL success, NSError *error))completionBlock {
     [FirebaseController setObject:object toPath:path withCompletion:^(BOOL success, NSError *error) {
-        
         if (success) {
             NSMutableDictionary *persistedValues = [FirebaseController sharedController].persistedValues;
             if ([persistedValues.allKeys containsObject:path]) {
@@ -159,7 +186,9 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
             }
         }
         
-        completionBlock(success, error);
+        if (completionBlock) {
+            completionBlock(success, error);
+        }
     }];
 }
 
@@ -184,8 +213,8 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
         }
         [mutableCopy removeObjectForKey:key];
     }
-    Firebase *directory = [[FirebaseController sharedController].firebase childByAppendingPath:path];
-    [directory updateChildValues:childValues withCompletionBlock:^(NSError *error, Firebase *ref) {
+    FIRDatabaseReference *directory = [[FirebaseController database] child:path];
+    [directory updateChildValues:childValues withCompletionBlock:^(NSError *error, FIRDatabaseReference *ref) {
         NSMutableDictionary *persistedValues = [FirebaseController sharedController].persistedValues;
         for (NSString *path in childValues.allKeys) {
             if ([persistedValues.allKeys containsObject:path]) {
@@ -232,23 +261,23 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 #pragma mark - // PUBLIC METHODS (Queries) //
 
 + (void)getObjectAtPath:(NSString *)path withCompletion:(void (^)(id object))completionBlock {
-    Firebase *directory = [[FirebaseController sharedController].firebase childByAppendingPath:path];
-    [directory observeSingleEventOfType:FEventTypeValue withBlock:^(FDataSnapshot *snapshot) {
+    FIRDatabaseReference *directory = [[FirebaseController database] child:path];
+    [directory observeSingleEventOfType:FIRDataEventTypeValue withBlock:^(FIRDataSnapshot *snapshot) {
         [FirebaseController performCompletionBlock:completionBlock withSnapshot:snapshot];
     }];
 }
 
 
 + (void)getObjectsAtPath:(NSString *)path withQueries:(NSArray <FirebaseQuery *> *)queries andCompletion:(void (^)(id result))completionBlock {
-    Firebase *directory = [[FirebaseController sharedController].firebase childByAppendingPath:path];
+    FIRDatabaseReference *directory = [[FirebaseController database] child:path];
     if (!queries || !queries.count) {
-        [directory observeSingleEventOfType:FEventTypeValue withBlock:^(FDataSnapshot *snapshot) {
+        [directory observeSingleEventOfType:FIRDataEventTypeValue withBlock:^(FIRDataSnapshot *snapshot) {
             [FirebaseController performCompletionBlock:completionBlock withSnapshot:snapshot];
         }];
         return;
     }
     
-    FQuery *query;
+    FIRDatabaseQuery *query;
     FirebaseQuery *queryItem;
     for (NSUInteger i = 0; i < queries.count; i++) {
         queryItem = queries[i];
@@ -259,7 +288,7 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
             query = [FirebaseQuery queryWithQueryItem:queryItem andDirectory:directory];
         }
     }
-    [query observeSingleEventOfType:FEventTypeValue withBlock:^(FDataSnapshot *snapshot) {
+    [query observeSingleEventOfType:FIRDataEventTypeValue withBlock:^(FIRDataSnapshot *snapshot) {
         [FirebaseController performCompletionBlock:completionBlock withSnapshot:snapshot];
      }];
 }
@@ -267,90 +296,91 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 #pragma mark - // PUBLIC METHODS (Observers) //
 
 + (void)observeValueChangedAtPath:(NSString *)path withBlock:(void (^)(id value))block {
-    [FirebaseController observeEvent:FEventTypeValue atPath:path withBlock:block];
+    [FirebaseController observeEvent:FIRDataEventTypeValue atPath:path withBlock:block];
 }
 
 + (void)observeChildAddedAtPath:(NSString *)path withBlock:(void (^)(id child))block {
-    [FirebaseController observeEvent:FEventTypeChildAdded atPath:path withBlock:block];
+    [FirebaseController observeEvent:FIRDataEventTypeChildAdded atPath:path withBlock:block];
 }
 
 + (void)observeChildChangedAtPath:(NSString *)path withBlock:(void (^)(id child))block {
-    [FirebaseController observeEvent:FEventTypeChildChanged atPath:path withBlock:block];
+    [FirebaseController observeEvent:FIRDataEventTypeChildChanged atPath:path withBlock:block];
 }
 
 + (void)observeChildRemovedFromPath:(NSString *)path withBlock:(void (^)(id child))block {
-    [FirebaseController observeEvent:FEventTypeChildRemoved atPath:path withBlock:block];
+    [FirebaseController observeEvent:FIRDataEventTypeChildRemoved atPath:path withBlock:block];
 }
 
 + (void)removeValueChangedObserverAtPath:(NSString *)path {
-    [FirebaseController removeObserverAtPath:path forEvent:FEventTypeValue];
+    [FirebaseController removeAllObserversAtPath:path forEvent:FIRDataEventTypeValue];
 }
 
 + (void)removeChildAddedObserverAtPath:(NSString *)path {
-    [FirebaseController removeObserverAtPath:path forEvent:FEventTypeChildAdded];
+    [FirebaseController removeAllObserversAtPath:path forEvent:FIRDataEventTypeChildAdded];
 }
 
 + (void)removeChildChangedObserverAtPath:(NSString *)path {
-    [FirebaseController removeObserverAtPath:path forEvent:FEventTypeChildChanged];
+    [FirebaseController removeAllObserversAtPath:path forEvent:FIRDataEventTypeChildChanged];
 }
 
 + (void)removeChildRemovedObserverAtPath:(NSString *)path {
-    [FirebaseController removeObserverAtPath:path forEvent:FEventTypeChildRemoved];
+    [FirebaseController removeAllObserversAtPath:path forEvent:FIRDataEventTypeChildRemoved];
 }
 
 #pragma mark - // CATEGORY METHODS (Auth) //
 
-+ (NSDictionary *)authData {
-    FAuthData *authData = [FirebaseController sharedController].firebase.authData;
-    return [FirebaseController dictionaryForAuthData:authData];
++ (id <FIRUserInfo>)currentUser {
+    return [FIRAuth auth].currentUser;
 }
 
-+ (void)signUpWithEmail:(NSString *)email password:(NSString *)password success:(void (^)(NSDictionary *result))successBlock failure:(void (^)(NSError *error))failureBlock {
-    [[FirebaseController sharedController].firebase createUser:email password:password withValueCompletionBlock:^(NSError *error, NSDictionary *result) {
-        if (!result) {
-            failureBlock(error);
++ (void)signUpAndSignInWithEmail:(NSString *)email password:(NSString *)password failure:(void (^)(NSError *error))failureBlock {
+    [[FIRAuth auth] createUserWithEmail:email password:password completion:^(FIRUser * _Nullable user, NSError * _Nullable error) {
+        if (user) {
             return;
         }
         
-        successBlock([FirebaseController authData]);
+        failureBlock(error);
     }];
 }
 
-+ (void)loginUserWithEmail:(NSString *)email password:(NSString *)password success:(void (^)(NSDictionary *result))successBlock failure:(void (^)(NSError *error))failureBlock {
-    [[FirebaseController sharedController].firebase authUser:email password:password withCompletionBlock:^(NSError *error, FAuthData *authData) {
-        if (!authData) {
-            failureBlock(error);
++ (void)signInWithEmail:(NSString *)email password:(NSString *)password failure:(void (^)(NSError *error))failureBlock {
+    [[FIRAuth auth] signInWithEmail:email password:password completion:^(FIRUser * _Nullable user, NSError * _Nullable error) {
+        if (user) {
             return;
         }
         
-        successBlock([FirebaseController dictionaryForAuthData:authData]);
+        failureBlock(error);
     }];
 }
 
 + (void)resetPasswordForUserWithEmail:(NSString *)email withCompletionBlock:(void(^)(NSError *error))completionBlock {
-    [[FirebaseController sharedController].firebase resetPasswordForUser:email withCompletionBlock:completionBlock];
+    [[FIRAuth auth] sendPasswordResetWithEmail:email completion:completionBlock];
 }
 
-+ (void)changeEmailForUserWithEmail:(NSString *)email password:(NSString *)password toNewEmail:(NSString *)newEmail withCompletionBlock:(void(^)(NSError *error))completionBlock {
-    [[FirebaseController sharedController].firebase changeEmailForUser:email password:password toNewEmail:newEmail withCompletionBlock:^(NSError *error){
-        
++ (void)updateEmailForCurrentUser:(NSString *)email withCompletionBlock:(void(^)(NSError *error))completionBlock {
+    [[FIRAuth auth].currentUser updateEmail:email completion:^(NSError *error) {
         if (!error) {
-            NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
-            userInfo[NOTIFICATION_OBJECT_KEY] = newEmail;
-            
-            [AKGenerics postNotificationName:FirebaseEmailDidChangeNotification object:nil userInfo:userInfo];
+            NSDictionary *userInfo = email ? @{FirebaseNotificationObject : email} : @{};
+            [[NSNotificationCenter defaultCenter] postNotificationName:FirebaseEmailDidChangeNotification object:nil userInfo:userInfo];
         }
         completionBlock(error);
     }];
 }
 
-+ (void)changePasswordForUserWithEmail:(NSString *)email fromOld:(NSString *)oldPassword toNew:(NSString *)newPassword withCompletionBlock:(void(^)(NSError *error))completionBlock {
-    [[FirebaseController sharedController].firebase changePasswordForUser:email fromOld:oldPassword toNew:newPassword withCompletionBlock:completionBlock];
++ (void)updatePasswordForCurrentUser:(NSString *)password withCompletionBlock:(void(^)(NSError *error))completionBlock {
+    [[FIRAuth auth].currentUser updatePassword:password completion:^(NSError *error) {
+        completionBlock(error);
+    }];
 }
 
-+ (void)logout {
++ (void)signOutWithFailure:(void(^)(NSError *error))failureBlock {
+    NSError *error;
+    [[FIRAuth auth] signOut:&error];
+    if (!error) {
+        return;
+    }
     
-    [[FirebaseController sharedController].firebase unauth];
+    failureBlock(error);
 }
 
 #pragma mark - // DELEGATED METHODS //
@@ -369,27 +399,47 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 }
 
 - (void)setup {
-    //    [Firebase defaultConfig].persistenceEnabled = YES;
+//    [FIRDatabaseReference defaultConfig].persistenceEnabled = YES;
     
     _isConnected = YES;
     _offlineValues = [NSMutableDictionary dictionary];
     _onlineValues = [NSMutableDictionary dictionary];
     _persistedValues = [NSMutableDictionary dictionary];
     _observers = [NSMutableDictionary dictionary];
+    
+    [self addObserversToAuth];
 }
 
-- (void)setProjectName:(NSString *)projectName {
-    self.firebase = [[Firebase alloc] initWithUrl:[NSString stringWithFormat:@"https://%@.firebaseio.com", projectName]];
+- (void)teardown {
+    [self removeObserversFromAuth];
 }
+
+#pragma mark - // PRIVATE METHODS (Getters) //
+
++ (FIRDatabaseReference *)database {
+    return [[FIRDatabase database] reference];
+}
+
+#pragma mark - // PRIVATE METHODS (Observers) //
+
+- (void)addObserversToAuth {
+    FIRAuth *auth = [FIRAuth auth];
+    FIRAuthStateDidChangeListenerHandle handle = [auth addAuthStateDidChangeListener:^(FIRAuth *_Nonnull auth, FIRUser *_Nullable user) {
+        NSDictionary *userInfo = user ? @{FirebaseNotificationObject : user} : @{};
+        [[NSNotificationCenter defaultCenter] postNotificationName:FirebaseUserDidChangeNotification object:nil userInfo:userInfo];
+    }];
+    self.authenticationListener = handle;
+}
+
+- (void)removeObserversFromAuth {
+    [[FIRAuth auth] removeAuthStateDidChangeListener:self.authenticationListener];
+}
+
+#pragma mark - // PRIVATE METHODS (Other) //
 
 + (void)setObject:(id)object toPath:(NSString *)path withCompletion:(void (^)(BOOL success, NSError *error))completionBlock {
-    Firebase *directory = [[FirebaseController sharedController].firebase childByAppendingPath:path];
-    [directory setValue:object withCompletionBlock:^(NSError *error, Firebase *ref) {
-        
-        if (error) {
-            [AKDebugger logMethod:METHOD_NAME logType:AKLogTypeError methodType:AKMethodTypeUnspecified tags:@[AKD_REMOTE_DATA] message:[NSString stringWithFormat:@"%@, %@", error, error.userInfo]];
-        }
-        
+    FIRDatabaseReference *directory = [[FirebaseController database] child:path];
+    [directory setValue:object withCompletionBlock:^(NSError *error, FIRDatabaseReference *ref) {
         if (completionBlock) {
             completionBlock(error == nil, error);
         }
@@ -397,8 +447,8 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 }
 
 + (void)setOfflineValue:(id)offlineValue forObjectAtPath:(NSString *)path withCompletion:(void (^)(BOOL success, NSError *error))completionBlock {
-    Firebase *directory = [[FirebaseController sharedController].firebase childByAppendingPath:path];
-    [directory onDisconnectSetValue:offlineValue withCompletionBlock:^(NSError *error, Firebase *ref) {
+    FIRDatabaseReference *directory = [[FirebaseController database] child:path];
+    [directory onDisconnectSetValue:offlineValue withCompletionBlock:^(NSError *error, FIRDatabaseReference *ref) {
         if (completionBlock) {
             completionBlock(error != nil, error);
         }
@@ -435,23 +485,28 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
     }
 }
 
-+ (void)observeEvent:(FEventType)event atPath:(NSString *)path withBlock:(void (^)(id object))block {
-    if ((event == FEventTypeValue) || (event == FEventTypeChildAdded)) {
-        Firebase *directory = [[FirebaseController sharedController].firebase childByAppendingPath:path];
-        [directory observeSingleEventOfType:FEventTypeValue withBlock:^(FDataSnapshot *snapshot) {
++ (void)observeEvent:(FIRDataEventType)event atPath:(NSString *)path withBlock:(void (^)(id object))block {
+    if (event == FIRDataEventTypeChildAdded) {
+        FIRDatabaseReference *directory = [[FirebaseController database] child:path];
+        [directory observeSingleEventOfType:FIRDataEventTypeValue withBlock:^(FIRDataSnapshot *snapshot) {
             id value = snapshot.value;
             [FirebaseController observeEvent:event atPath:path withBlock:block andThreshold:([value isKindOfClass:[NSNull class]] ? 1 : MAX(snapshot.childrenCount, 1))];
         }];
         return;
     }
     
-    [FirebaseController observeEvent:event atPath:path withBlock:block andThreshold:0];
+    [FirebaseController observeEvent:event atPath:path withBlock:block andThreshold:((event == FIRDataEventTypeValue) ? 1 : 0)];
 }
 
-+ (void)observeEvent:(FEventType)event atPath:(NSString *)path withBlock:(void (^)(id object))block andThreshold:(NSUInteger)threshold {
-    FirebaseHandle handle = [[[FirebaseController sharedController].firebase childByAppendingPath:path] observeEventType:event withBlock:^(FDataSnapshot *snapshot) {
++ (void)observeEvent:(FIRDataEventType)event atPath:(NSString *)path withBlock:(void (^)(id object))block andThreshold:(NSUInteger)threshold {
+    [[[FirebaseController database] child:path] observeEventType:event withBlock:^(FIRDataSnapshot *snapshot) {
         NSString *key = [FirebaseController keyForPath:path andEvent:event];
-        NSNumber *thresholdValue = [FirebaseController sharedController].observers[key][FirebaseObserverConnectionThresholdKey];
+        NSDictionary *info = [FirebaseController sharedController].observers[key];
+        if (!info) {
+            return;
+        }
+        
+        NSNumber *thresholdValue = info[FirebaseObserverConnectionThresholdKey];
         NSNumber *countValue = [FirebaseController sharedController].observers[key][FirebaseObserverConnectionCountKey];
         if (thresholdValue.integerValue > countValue.integerValue) {
             [FirebaseController sharedController].observers[key][FirebaseObserverConnectionCountKey] = [NSNumber numberWithInteger:countValue.integerValue+1];
@@ -461,54 +516,55 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
         [FirebaseController performCompletionBlock:block withSnapshot:snapshot];
     }];
     
-    NSMutableDictionary *info = [NSMutableDictionary dictionaryWithObjects:@[[NSNumber numberWithInteger:handle], [NSNumber numberWithInteger:threshold], @0] forKeys:@[FirebaseObserverHandleKey, FirebaseObserverConnectionThresholdKey, FirebaseObserverConnectionCountKey]];
+    NSNumber *thresholdValue = [NSNumber numberWithInteger:threshold];
+    NSNumber *countValue = @0;
+    NSMutableDictionary *info = [NSMutableDictionary dictionaryWithObjects:@[thresholdValue, countValue] forKeys:@[FirebaseObserverConnectionThresholdKey, FirebaseObserverConnectionCountKey]];
     
     [[FirebaseController sharedController].observers setObject:info forKey:[FirebaseController keyForPath:path andEvent:event]];
 }
 
-+ (void)removeObserverAtPath:(NSString *)path forEvent:(FEventType)event {
++ (void)removeAllObserversAtPath:(NSString *)path forEvent:(FIRDataEventType)event {
     NSString *key = [FirebaseController keyForPath:path andEvent:event];
-    NSNumber *handleValue = [FirebaseController sharedController].observers[key][FirebaseObserverHandleKey];
-    FirebaseHandle handle = handleValue.integerValue;
-    [[FirebaseController sharedController].firebase removeObserverWithHandle:handle];
+    FIRDatabaseReference *firebase = [[FirebaseController database] child:path];
+    [firebase removeAllObservers];
     [[FirebaseController sharedController].observers removeObjectForKey:key];
 }
 
-+ (NSString *)stringForEvent:(FEventType)event {
++ (NSString *)stringForEvent:(FIRDataEventType)event {
     switch (event) {
-        case FEventTypeValue:
+        case FIRDataEventTypeValue:
             return FirebaseObserverValueChanged;
-        case FEventTypeChildAdded:
+        case FIRDataEventTypeChildAdded:
             return FirebaseObserverChildAdded;
-        case FEventTypeChildChanged:
+        case FIRDataEventTypeChildChanged:
             return FirebaseObserverChildChanged;
-        case FEventTypeChildMoved:
+        case FIRDataEventTypeChildMoved:
             return FirebaseObserverChildMoved;
-        case FEventTypeChildRemoved:
+        case FIRDataEventTypeChildRemoved:
             return FirebaseObserverChildRemoved;
     }
 }
 
-+ (void)performCompletionBlock:(void (^)(id result))completionBlock withSnapshot:(FDataSnapshot *)snapshot {
++ (void)performCompletionBlock:(void (^)(id result))completionBlock withSnapshot:(FIRDataSnapshot *)snapshot {
     NSString *key = snapshot.key;
     id value = snapshot.value;
+    if ([value isKindOfClass:[NSNull class]]) {
+        return;
+    }
+    
     if ([value isKindOfClass:[NSArray class]]) {
         NSArray *array = snapshot.value;
-        value = [NSDictionary dictionaryWithObjects:array forKeys:[NSArray arrayWithValue:0 increment:1 length:array.count]];
+        NSMutableArray *keys = [NSMutableArray arrayWithCapacity:array.count];
+        for (int i = 0; i < array.count; i++) {
+            [keys addObject:@(i)];
+        }
+        value = [NSDictionary dictionaryWithObjects:array forKeys:[NSArray arrayWithArray:keys]];
     }
     
     completionBlock(@{key : value});
 }
 
-+ (NSDictionary *)dictionaryForAuthData:(FAuthData *)authData {
-    if (!authData) {
-        return nil;
-    }
-    
-    return @{FirebaseAuthKeyEmail : authData.providerData[FirebaseAuthKeyEmail], FirebaseAuthKeyUID : authData.uid, FirebaseAuthKeyProfileImageURL : authData.providerData[FirebaseAuthKeyProfileImageURL], FirebaseAuthKeyToken : authData.token};
-}
-
-+ (NSString *)keyForPath:(NSString *)path andEvent:(FEventType)event {
++ (NSString *)keyForPath:(NSString *)path andEvent:(FIRDataEventType)event {
     return [NSString stringWithFormat:@"%@_%@", path, [FirebaseController stringForEvent:event]];
 }
 

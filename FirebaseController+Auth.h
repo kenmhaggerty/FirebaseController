@@ -14,21 +14,19 @@
 
 #pragma mark - // PROTOCOLS //
 
+#import <FirebaseAuth/FIRUserInfo.h>
+
 #pragma mark - // DEFINITIONS //
 
+extern NSString * const FirebaseUserDidChangeNotification;
 extern NSString * const FirebaseEmailDidChangeNotification;
 
-extern NSString * const FirebaseAuthKeyEmail;
-extern NSString * const FirebaseAuthKeyUID;
-extern NSString * const FirebaseAuthKeyToken;
-extern NSString * const FirebaseAuthKeyProfileImageURL;
-
 @interface FirebaseController (Auth)
-+ (NSDictionary *)authData;
-+ (void)signUpWithEmail:(NSString *)email password:(NSString *)password success:(void (^)(NSDictionary *))successBlock failure:(void (^)(NSError *))failureBlock;
-+ (void)loginUserWithEmail:(NSString *)email password:(NSString *)password success:(void (^)(NSDictionary *))successBlock failure:(void (^)(NSError *))failureBlock;
++ (id <FIRUserInfo>)currentUser;
++ (void)signUpAndSignInWithEmail:(NSString *)email password:(NSString *)password failure:(void (^)(NSError *error))failureBlock;
++ (void)signInWithEmail:(NSString *)email password:(NSString *)password failure:(void (^)(NSError *error))failureBlock;
 + (void)resetPasswordForUserWithEmail:(NSString *)email withCompletionBlock:(void(^)(NSError *error))completionBlock;
-+ (void)changeEmailForUserWithEmail:(NSString *)email password:(NSString *)password toNewEmail:(NSString *)newEmail withCompletionBlock:(void(^)(NSError *error))completionBlock;
-+ (void)changePasswordForUserWithEmail:(NSString *)email fromOld:(NSString *)oldPassword toNew:(NSString *)newPassword withCompletionBlock:(void(^)(NSError *error))completionBlock;
-+ (void)logout;
++ (void)updateEmailForCurrentUser:(NSString *)email withCompletionBlock:(void(^)(NSError *error))completionBlock;
++ (void)updatePasswordForCurrentUser:(NSString *)password withCompletionBlock:(void(^)(NSError *error))completionBlock;
++ (void)signOutWithFailure:(void(^)(NSError *error))failureBlock;
 @end

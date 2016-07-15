@@ -11,7 +11,6 @@
 #pragma mark - // IMPORTS (Private) //
 
 #import "FirebaseQuery+FQuery.h"
-#import "AKGenerics.h"
 
 #pragma mark - // DEFINITIONS (Private) //
 
@@ -19,7 +18,7 @@
 @property (nonatomic, strong) NSString *key;
 @property (nonatomic) FirebaseQueryRelation relation;
 @property (nonatomic, strong) id value;
-+ (FQuery *)appendRelation:(FirebaseQueryRelation)relation withValue:(id)value toQuery:(FQuery *)query;
++ (FIRDatabaseQuery *)appendRelation:(FirebaseQueryRelation)relation withValue:(id)value toQuery:(FIRDatabaseQuery *)query;
 @end
 
 @implementation FirebaseQuery
@@ -51,12 +50,12 @@
 
 #pragma mark - // CATEGORY METHODS (FQuery) //
 
-+ (FQuery *)queryWithQueryItem:(FirebaseQuery *)queryItem andDirectory:(Firebase *)directory {
-    FQuery *query = [directory queryOrderedByChild:queryItem.key];
++ (FIRDatabaseQuery *)queryWithQueryItem:(FirebaseQuery *)queryItem andDirectory:(FIRDatabaseReference *)directory {
+    FIRDatabaseQuery *query = [directory queryOrderedByChild:queryItem.key];
     return [FirebaseQuery appendRelation:queryItem.relation withValue:queryItem.value toQuery:query];
 }
 
-+ (FQuery *)appendQueryItem:(FirebaseQuery *)queryItem toQuery:(FQuery *)query {
++ (FIRDatabaseQuery *)appendQueryItem:(FirebaseQuery *)queryItem toQuery:(FIRDatabaseQuery *)query {
     query = [query queryOrderedByChild:queryItem.key];
     return [FirebaseQuery appendRelation:queryItem.relation withValue:queryItem.value toQuery:query];
 }
@@ -83,7 +82,7 @@
 
 #pragma mark - // PRIVATE METHODS //
 
-+ (FQuery *)appendRelation:(FirebaseQueryRelation)relation withValue:(id)value toQuery:(FQuery *)query {
++ (FIRDatabaseQuery *)appendRelation:(FirebaseQueryRelation)relation withValue:(id)value toQuery:(FIRDatabaseQuery *)query {
     switch (relation) {
         case FirebaseKeyIsEqualTo:
             return [query queryEqualToValue:value];

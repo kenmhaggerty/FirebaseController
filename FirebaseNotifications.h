@@ -16,4 +16,6 @@
 
 #pragma mark - // DEFINITIONS (Public) //
 
+extern NSString * const FirebaseNotificationObject;
+
 extern NSString * const FirebaseIsConnectedDidChangeNotification;
