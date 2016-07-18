@@ -1,16 +1,16 @@
 //
-//  FirebaseController+Auth.h
-//  PushQuery
+//  KMHFirebaseController+Auth.h
+//  KMHFirebaseController
 //
 //  Created by Ken M. Haggerty on 3/4/16.
-//  Copyright © 2016 Flatiron School. All rights reserved.
+//  Copyright © 2016 Ken M. Haggerty. All rights reserved.
 //
 
 #pragma mark - // NOTES //
 
 #pragma mark - // IMPORTS //
 
-#import "FirebaseController.h"
+#import "KMHFirebaseController.h"
 
 #pragma mark - // PROTOCOLS //
 
@@ -21,7 +21,7 @@
 extern NSString * const FirebaseUserDidChangeNotification;
 extern NSString * const FirebaseEmailDidChangeNotification;
 
-@interface FirebaseController (Auth)
+@interface KMHFirebaseController (Auth)
 + (id <FIRUserInfo>)currentUser;
 + (void)signUpAndSignInWithEmail:(NSString *)email password:(NSString *)password failure:(void (^)(NSError *error))failureBlock;
 + (void)signInWithEmail:(NSString *)email password:(NSString *)password failure:(void (^)(NSError *error))failureBlock;

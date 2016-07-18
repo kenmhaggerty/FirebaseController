@@ -1,9 +1,9 @@
 //
-//  FirebaseQuery.h
-//  PushQuery
+//  KMHFirebaseQuery.h
+//  KMHFirebaseController
 //
 //  Created by Ken M. Haggerty on 3/11/16.
-//  Copyright © 2016 Flatiron School. All rights reserved.
+//  Copyright © 2016 Ken M. Haggerty. All rights reserved.
 //
 
 #pragma mark - // NOTES (Public) //
@@ -22,7 +22,7 @@ typedef enum : NSUInteger {
     FirebaseKeyIsGreaterThanOrEqualTo,
 } FirebaseQueryRelation;
 
-@interface FirebaseQuery : NSObject
+@interface KMHFirebaseQuery : NSObject
 
 // INITIALIZERS //
 

@@ -1,9 +1,9 @@
 //
-//  FirebaseController.h
-//  PushQuery
+//  KMHFirebaseController.h
+//  KMHFirebaseController
 //
 //  Created by Ken M. Haggerty on 3/4/16.
-//  Copyright © 2016 Flatiron School. All rights reserved.
+//  Copyright © 2016 Ken M. Haggerty. All rights reserved.
 //
 
 #pragma mark - // NOTES (Public) //
@@ -12,15 +12,15 @@
 
 #import <Foundation/Foundation.h>
 
-#import "FirebaseQuery.h"
+#import "KMHFirebaseQuery.h"
 
 #pragma mark - // PROTOCOLS //
 
 #pragma mark - // DEFINITIONS (Public) //
 
-#import "FirebaseNotifications.h"
+#import "KMHFirebaseNotifications.h"
 
-@interface FirebaseController : NSObject
+@interface KMHFirebaseController : NSObject
 
 // GENERAL //
 
@@ -44,7 +44,7 @@
 // QUERIES //
 
 + (void)getObjectAtPath:(NSString *)path withCompletion:(void (^)(id object))completionBlock;
-+ (void)getObjectsAtPath:(NSString *)path withQueries:(NSArray <FirebaseQuery *> *)queries andCompletion:(void (^)(id result))completionBlock;
++ (void)getObjectsAtPath:(NSString *)path withQueries:(NSArray <KMHFirebaseQuery *> *)queries andCompletion:(void (^)(id result))completionBlock;
 
 // OBSERVERS //
 

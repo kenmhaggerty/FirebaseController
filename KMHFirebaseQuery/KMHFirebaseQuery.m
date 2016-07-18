@@ -1,27 +1,27 @@
 //
-//  FirebaseQuery.m
-//  PushQuery
+//  KMHFirebaseQuery
+//  KMHFirebaseController
 //
 //  Created by Ken M. Haggerty on 3/11/16.
-//  Copyright © 2016 Flatiron School. All rights reserved.
+//  Copyright © 2016 Ken M. Haggerty. All rights reserved.
 //
 
 #pragma mark - // NOTES (Private) //
 
 #pragma mark - // IMPORTS (Private) //
 
-#import "FirebaseQuery+FQuery.h"
+#import "KMHFirebaseQuery+FQuery.h"
 
 #pragma mark - // DEFINITIONS (Private) //
 
-@interface FirebaseQuery ()
+@interface KMHFirebaseQuery ()
 @property (nonatomic, strong) NSString *key;
 @property (nonatomic) FirebaseQueryRelation relation;
 @property (nonatomic, strong) id value;
 + (FIRDatabaseQuery *)appendRelation:(FirebaseQueryRelation)relation withValue:(id)value toQuery:(FIRDatabaseQuery *)query;
 @end
 
-@implementation FirebaseQuery
+@implementation KMHFirebaseQuery
 
 #pragma mark - // SETTERS AND GETTERS //
 
@@ -45,19 +45,19 @@
 #pragma mark - // PUBLIC METHODS (Initializers) //
 
 + (instancetype)queryWithKey:(NSString *)key relation:(FirebaseQueryRelation)relation value:(id)value {
-    return [[FirebaseQuery alloc] initWithKey:key relation:relation value:value];
+    return [[KMHFirebaseQuery alloc] initWithKey:key relation:relation value:value];
 }
 
 #pragma mark - // CATEGORY METHODS (FQuery) //
 
-+ (FIRDatabaseQuery *)queryWithQueryItem:(FirebaseQuery *)queryItem andDirectory:(FIRDatabaseReference *)directory {
++ (FIRDatabaseQuery *)queryWithQueryItem:(KMHFirebaseQuery *)queryItem andDirectory:(FIRDatabaseReference *)directory {
     FIRDatabaseQuery *query = [directory queryOrderedByChild:queryItem.key];
-    return [FirebaseQuery appendRelation:queryItem.relation withValue:queryItem.value toQuery:query];
+    return [KMHFirebaseQuery appendRelation:queryItem.relation withValue:queryItem.value toQuery:query];
 }
 
-+ (FIRDatabaseQuery *)appendQueryItem:(FirebaseQuery *)queryItem toQuery:(FIRDatabaseQuery *)query {
++ (FIRDatabaseQuery *)appendQueryItem:(KMHFirebaseQuery *)queryItem toQuery:(FIRDatabaseQuery *)query {
     query = [query queryOrderedByChild:queryItem.key];
-    return [FirebaseQuery appendRelation:queryItem.relation withValue:queryItem.value toQuery:query];
+    return [KMHFirebaseQuery appendRelation:queryItem.relation withValue:queryItem.value toQuery:query];
 }
 
 #pragma mark - // DELEGATED METHODS //
