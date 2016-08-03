@@ -69,7 +69,7 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 + (void)observeEvent:(FIRDataEventType)event atPath:(NSString *)path withBlock:(void (^)(id object))block;
 + (void)removeAllObserversAtPath:(NSString *)path forEvent:(FIRDataEventType)event;
 + (NSString *)stringForEvent:(FIRDataEventType)event;
-+ (void)performCompletionBlock:(void (^)(id result))completionBlock withSnapshot:(FIRDataSnapshot *)snapshot;
++ (void)performCompletionBlock:(void (^)(id result))completionBlock withKey:(id)key value:(id)value;
 + (NSString *)keyForPath:(NSString *)path andEvent:(FIRDataEventType)event;
 
 @end
@@ -260,7 +260,7 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 + (void)getObjectAtPath:(NSString *)path withCompletion:(void (^)(id object))completionBlock {
     FIRDatabaseReference *directory = [[KMHFirebaseController database] child:path];
     [directory observeSingleEventOfType:FIRDataEventTypeValue withBlock:^(FIRDataSnapshot *snapshot) {
-        [KMHFirebaseController performCompletionBlock:completionBlock withSnapshot:snapshot];
+        [KMHFirebaseController performCompletionBlock:completionBlock withKey:nil value:snapshot.value];
     }];
 }
 
@@ -269,7 +269,7 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
     FIRDatabaseReference *directory = [[KMHFirebaseController database] child:path];
     if (!queries || !queries.count) {
         [directory observeSingleEventOfType:FIRDataEventTypeValue withBlock:^(FIRDataSnapshot *snapshot) {
-            [KMHFirebaseController performCompletionBlock:completionBlock withSnapshot:snapshot];
+            [KMHFirebaseController performCompletionBlock:completionBlock withKey:nil value:snapshot.value];
         }];
         return;
     }
@@ -286,7 +286,7 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
         }
     }
     [query observeSingleEventOfType:FIRDataEventTypeValue withBlock:^(FIRDataSnapshot *snapshot) {
-        [KMHFirebaseController performCompletionBlock:completionBlock withSnapshot:snapshot];
+        [KMHFirebaseController performCompletionBlock:completionBlock withKey:nil value:snapshot.value];
      }];
 }
 
@@ -510,7 +510,8 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
             return;
         }
         
-        [KMHFirebaseController performCompletionBlock:block withSnapshot:snapshot];
+        id snapshotKey = (event == FIRDataEventTypeValue) ? nil : snapshot.key;
+        [KMHFirebaseController performCompletionBlock:block withKey:snapshotKey value:snapshot.value];
     }];
     
     NSNumber *thresholdValue = [NSNumber numberWithInteger:threshold];
@@ -542,23 +543,13 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
     }
 }
 
-+ (void)performCompletionBlock:(void (^)(id result))completionBlock withSnapshot:(FIRDataSnapshot *)snapshot {
-    NSString *key = snapshot.key;
-    id value = snapshot.value;
++ (void)performCompletionBlock:(void (^)(id result))completionBlock withKey:(id)key value:(id)value {
     if ([value isKindOfClass:[NSNull class]]) {
+        completionBlock(nil);
         return;
     }
     
-    if ([value isKindOfClass:[NSArray class]]) {
-        NSArray *array = snapshot.value;
-        NSMutableArray *keys = [NSMutableArray arrayWithCapacity:array.count];
-        for (int i = 0; i < array.count; i++) {
-            [keys addObject:@(i)];
-        }
-        value = [NSDictionary dictionaryWithObjects:array forKeys:[NSArray arrayWithArray:keys]];
-    }
-    
-    completionBlock(@{key : value});
+    completionBlock(key ? @{key : value} : value);
 }
 
 + (NSString *)keyForPath:(NSString *)path andEvent:(FIRDataEventType)event {
