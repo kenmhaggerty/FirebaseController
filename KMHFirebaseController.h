@@ -18,7 +18,8 @@
 
 #pragma mark - // DEFINITIONS (Public) //
 
-#import "KMHFirebaseNotifications.h"
+extern NSString * const FirebaseNotificationUserInfoKey;
+extern NSString * const FirebaseIsConnectedDidChangeNotification;
 
 @interface KMHFirebaseController : NSObject
 

@@ -15,8 +15,7 @@
 
 #pragma mark - // DEFINITIONS (Private) //
 
-NSString * const NSNotificationUserInfoObjectKey = @"object";
-
+NSString * const FirebaseNotificationUserInfoKey = @"value";
 NSString * const FirebaseIsConnectedDidChangeNotification = @"kNotificationFirebaseController_IsConnectedDidChange;";
 
 NSString * const FirebaseUserDidChangeNotification = @"kNotificationFirebaseController_UserDidChange";
