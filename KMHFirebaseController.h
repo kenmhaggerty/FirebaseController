@@ -52,7 +52,7 @@ extern NSString * const FirebaseIsConnectedDidChangeNotification;
 + (void)observeValueChangedAtPath:(NSString *)path withBlock:(void (^)(id value))block;
 + (void)observeChildAddedAtPath:(NSString *)path withBlock:(void (^)(id child))block;
 + (void)observeChildChangedAtPath:(NSString *)path withBlock:(void (^)(id child))block;
-+ (void)observeChildRemovedFromPath:(NSString *)path withBlock:(void (^)(id child))block;
++ (void)observeChildRemovedAtPath:(NSString *)path withBlock:(void (^)(id child))block;
 
 + (void)removeValueChangedObserverAtPath:(NSString *)path;
 + (void)removeChildAddedObserverAtPath:(NSString *)path;

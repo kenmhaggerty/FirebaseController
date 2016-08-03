@@ -304,7 +304,7 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
     [KMHFirebaseController observeEvent:FIRDataEventTypeChildChanged atPath:path withBlock:block];
 }
 
-+ (void)observeChildRemovedFromPath:(NSString *)path withBlock:(void (^)(id child))block {
++ (void)observeChildRemovedAtPath:(NSString *)path withBlock:(void (^)(id child))block {
     [KMHFirebaseController observeEvent:FIRDataEventTypeChildRemoved atPath:path withBlock:block];
 }
 
