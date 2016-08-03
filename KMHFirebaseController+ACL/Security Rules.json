@@ -1,0 +1,43 @@
+{
+  "rules" : {
+    "objects" : {
+      "$object_id" : {
+        // OBJECT
+        ".read" : "root.child('permissions/public/'+$object_id).val() == true || root.child('permissions/user/'+auth.uid+'/'+$object_id).val() == true",
+        // can read if public or if permitted user
+        ".write" : "root.child('permissions/user/'+auth.uid+'/'+$object_id).val() == true || (auth !== null && data.val() == null)"
+        // can write if permitted user or logged in and no existing object
+      }
+    },
+    "permissions" : {
+      "public" : {
+        // PUBLIC PERMISSIONS
+        ".read" : "auth !== null",
+        // can read if logged in user
+        "$object_id" : {
+          // PUBLIC OBJECT PERMISSION
+          ".write" : "root.child('permissions/user/'+auth.uid+'/'+$object_id).val() == true",
+          // can write if permitted user
+          ".validate" : "(newData.val() == true || newData.val() == false) && root.child('objects/'+$object_id).exists()"
+          // validate value is bool + $object_id exists
+        }
+      },
+      "user" : {
+        "$user_id" : {
+          // USER PERMISSIONS
+          ".read" : "auth.uid === $user_id",
+          // can read if user
+          ".write" : "auth !== null",
+          // can write if logged in user
+          "$object_id" : {
+            // USER OBJECT PERMISSION
+            ".validate" : "(newData.val() == true || newData.val() == false) && ((root.child('objects/'+$object_id).exists() && root.child('permissions/user/'+auth.uid+'/'+$object_id).val() == true) || (!root.child('objects/'+$object_id).exists() && auth.uid === $user_id))"
+            // validate value is bool + either:
+            //  > $object_id exists + if permitted user
+            //  > $object_id does not exist + if current user
+          }
+        }
+      }
+    }
+  }
+}
