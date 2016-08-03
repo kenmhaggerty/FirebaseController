@@ -10,7 +10,7 @@
 
 #pragma mark - // IMPORTS (Private) //
 
-#import "KMHFirebaseQuery+FQuery.h"
+#import "KMHFirebaseQuery+PRIVATE.h"
 
 #pragma mark - // DEFINITIONS (Private) //
 

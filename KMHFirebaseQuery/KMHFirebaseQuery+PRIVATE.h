@@ -1,5 +1,5 @@
 //
-//  KMHFirebaseQuery+FQuery.h
+//  KMHFirebaseQuery+PRIVATE.h
 //  KMHFirebaseController
 //
 //  Created by Ken M. Haggerty on 3/11/16.

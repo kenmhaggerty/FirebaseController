@@ -11,7 +11,7 @@
 #pragma mark - // IMPORTS (Private) //
 
 #import "KMHFirebaseController+Auth.h"
-#import "KMHFirebaseQuery+FQuery.h"
+#import "KMHFirebaseQuery+PRIVATE.h"
 
 #pragma mark - // DEFINITIONS (Private) //
 
