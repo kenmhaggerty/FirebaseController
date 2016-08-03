@@ -10,16 +10,13 @@
 
 #pragma mark - // IMPORTS (Private) //
 
-#import "KMHFirebaseController+Auth.h"
+#import "KMHFirebaseController+PRIVATE.h"
 #import "KMHFirebaseQuery+PRIVATE.h"
 
 #pragma mark - // DEFINITIONS (Private) //
 
 NSString * const FirebaseNotificationUserInfoKey = @"value";
 NSString * const FirebaseIsConnectedDidChangeNotification = @"kNotificationFirebaseController_IsConnectedDidChange;";
-
-NSString * const FirebaseUserDidChangeNotification = @"kNotificationFirebaseController_UserDidChange";
-NSString * const FirebaseEmailDidChangeNotification = @"kNotificationFirebaseController_EmailDidChange";
 
 NSString * const FirebaseKeyOnlineValue = @"value";
 NSString * const FirebaseKeyPersistValue = @"persist";
@@ -36,10 +33,8 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 
 @interface KMHFirebaseController ()
 @property (nonatomic, strong) FIRDatabaseReference *database;
-@property (nonatomic) FIRAuthStateDidChangeListenerHandle authenticationListener;
 @property (nonatomic) FIRDatabaseHandle connectionListener;
 @property (nonatomic) BOOL isConnected;
-
 @property (nonatomic, strong) NSMutableDictionary *offlineValues;
 @property (nonatomic, strong) NSMutableDictionary *onlineValues;
 @property (nonatomic, strong) NSMutableDictionary *persistedValues;
@@ -47,18 +42,7 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 
 // GENERAL //
 
-+ (instancetype)sharedController;
-- (void)setup;
-- (void)teardown;
-
-// GETTERS //
-
 + (FIRDatabaseReference *)database;
-
-// OBSERVERS //
-
-- (void)addObserversToAuth;
-- (void)removeObserversFromAuth;
 
 // OTHER //
 
@@ -78,7 +62,24 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 
 #pragma mark - // SETTERS AND GETTERS //
 
+@synthesize isConnected = _isConnected;
 @synthesize database = _database;
+
+- (void)setIsConnected:(BOOL)isConnected {
+    if (isConnected == _isConnected) {
+        return;
+    }
+    
+    _isConnected = isConnected;
+    
+    if (isConnected) {
+        [self setOnlineValues];
+        [self persistOfflineValues];
+    }
+    
+    NSDictionary *userInfo = @{FirebaseNotificationUserInfoKey : @(isConnected)};
+    [[NSNotificationCenter defaultCenter] postNotificationName:FirebaseIsConnectedDidChangeNotification object:nil userInfo:userInfo];
+}
 
 - (void)setDatabase:(FIRDatabaseReference *)database {
     if ([database isEqual:_database]) {
@@ -105,28 +106,7 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
     return _database;
 }
 
-- (void)setIsConnected:(BOOL)isConnected {
-    if (isConnected == _isConnected) {
-        return;
-    }
-    
-    NSDictionary *userInfo = @{NSNotificationUserInfoObjectKey : @(isConnected)};
-    
-    _isConnected = isConnected;
-    
-    if (isConnected) {
-        [self setOnlineValues];
-        [self persistOfflineValues];
-    }
-    
-    [[NSNotificationCenter defaultCenter] postNotificationName:FirebaseIsConnectedDidChangeNotification object:nil userInfo:userInfo];
-}
-
 #pragma mark - // INITS AND LOADS //
-
-- (void)dealloc {
-    [self teardown];
-}
 
 - (id)init {
     self = [super init];
@@ -324,67 +304,7 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
     [KMHFirebaseController removeAllObserversAtPath:path forEvent:FIRDataEventTypeChildRemoved];
 }
 
-#pragma mark - // CATEGORY METHODS (Auth) //
-
-+ (id <FIRUserInfo>)currentUser {
-    return [FIRAuth auth].currentUser;
-}
-
-+ (void)signUpAndSignInWithEmail:(NSString *)email password:(NSString *)password failure:(void (^)(NSError *error))failureBlock {
-    [[FIRAuth auth] createUserWithEmail:email password:password completion:^(FIRUser * _Nullable user, NSError * _Nullable error) {
-        if (user) {
-            return;
-        }
-        
-        failureBlock(error);
-    }];
-}
-
-+ (void)signInWithEmail:(NSString *)email password:(NSString *)password failure:(void (^)(NSError *error))failureBlock {
-    [[FIRAuth auth] signInWithEmail:email password:password completion:^(FIRUser * _Nullable user, NSError * _Nullable error) {
-        if (user) {
-            return;
-        }
-        
-        failureBlock(error);
-    }];
-}
-
-+ (void)resetPasswordForUserWithEmail:(NSString *)email withCompletionBlock:(void(^)(NSError *error))completionBlock {
-    [[FIRAuth auth] sendPasswordResetWithEmail:email completion:completionBlock];
-}
-
-+ (void)updateEmailForCurrentUser:(NSString *)email withCompletionBlock:(void(^)(NSError *error))completionBlock {
-    [[FIRAuth auth].currentUser updateEmail:email completion:^(NSError *error) {
-        if (!error) {
-            NSDictionary *userInfo = email ? @{NSNotificationUserInfoObjectKey : email} : @{};
-            [[NSNotificationCenter defaultCenter] postNotificationName:FirebaseEmailDidChangeNotification object:nil userInfo:userInfo];
-        }
-        completionBlock(error);
-    }];
-}
-
-+ (void)updatePasswordForCurrentUser:(NSString *)password withCompletionBlock:(void(^)(NSError *error))completionBlock {
-    [[FIRAuth auth].currentUser updatePassword:password completion:^(NSError *error) {
-        completionBlock(error);
-    }];
-}
-
-+ (void)signOutWithFailure:(void(^)(NSError *error))failureBlock {
-    NSError *error;
-    [[FIRAuth auth] signOut:&error];
-    if (!error) {
-        return;
-    }
-    
-    failureBlock(error);
-}
-
-#pragma mark - // DELEGATED METHODS //
-
-#pragma mark - // OVERWRITTEN METHODS //
-
-#pragma mark - // PRIVATE METHODS (General) //
+#pragma mark - // CATEGORY METHODS (PRIVATE) //
 
 + (instancetype)sharedController {
     static KMHFirebaseController *_sharedController = nil;
@@ -398,38 +318,21 @@ NSString * const FirebaseObserverConnectionCountKey = @"count";
 - (void)setup {
 //    [FIRDatabaseReference defaultConfig].persistenceEnabled = YES;
     
-    _isConnected = YES;
-    _offlineValues = [NSMutableDictionary dictionary];
-    _onlineValues = [NSMutableDictionary dictionary];
-    _persistedValues = [NSMutableDictionary dictionary];
-    _observers = [NSMutableDictionary dictionary];
-    
-    [self addObserversToAuth];
+    self.isConnected = YES;
+    self.offlineValues = [NSMutableDictionary dictionary];
+    self.onlineValues = [NSMutableDictionary dictionary];
+    self.persistedValues = [NSMutableDictionary dictionary];
+    self.observers = [NSMutableDictionary dictionary];
 }
 
-- (void)teardown {
-    [self removeObserversFromAuth];
-}
+#pragma mark - // DELEGATED METHODS //
 
-#pragma mark - // PRIVATE METHODS (Getters) //
+#pragma mark - // OVERWRITTEN METHODS //
+
+#pragma mark - // PRIVATE METHODS (General) //
 
 + (FIRDatabaseReference *)database {
     return [[FIRDatabase database] reference];
-}
-
-#pragma mark - // PRIVATE METHODS (Observers) //
-
-- (void)addObserversToAuth {
-    FIRAuth *auth = [FIRAuth auth];
-    FIRAuthStateDidChangeListenerHandle handle = [auth addAuthStateDidChangeListener:^(FIRAuth *_Nonnull auth, FIRUser *_Nullable user) {
-        NSDictionary *userInfo = user ? @{NSNotificationUserInfoObjectKey : user} : @{};
-        [[NSNotificationCenter defaultCenter] postNotificationName:FirebaseUserDidChangeNotification object:nil userInfo:userInfo];
-    }];
-    self.authenticationListener = handle;
-}
-
-- (void)removeObserversFromAuth {
-    [[FIRAuth auth] removeAuthStateDidChangeListener:self.authenticationListener];
 }
 
 #pragma mark - // PRIVATE METHODS (Other) //
