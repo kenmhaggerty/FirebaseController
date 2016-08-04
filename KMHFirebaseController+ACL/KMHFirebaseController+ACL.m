@@ -225,7 +225,7 @@ NSString * const FirebasePathObjects = @"objects";
 }
 
 
-+ (void)saveObject:(id)object withId:(NSString *)objectId andCompletion:(void (^)(BOOL success, NSError *error))completionBlock {
++ (void)overwriteObjectWithId:(NSString *)objectId withObject:(id)object andCompletion:(void (^)(BOOL success, NSError *error))completionBlock {
     NSURL *pathURL = [NSURL fileURLWithPathComponents:@[FirebasePathObjects, objectId]];
     [KMHFirebaseController saveObject:object toPath:pathURL.relativeString withCompletion:completionBlock];
 }

@@ -31,7 +31,7 @@ extern NSString * const FirebaseObjectsWithIdsWereUnsharedNotification;
 // SAVE //
 
 + (void)saveObject:(id)object withId:(NSString *)objectId isPublic:(BOOL)isPublic users:(NSSet <NSString *> *)userIds error:(void (^)(NSError *error))errorBlock completion:(void (^)(BOOL success))completionBlock;
-+ (void)saveObject:(id)object withId:(NSString *)objectId andCompletion:(void (^)(BOOL success, NSError *error))completionBlock;
++ (void)overwriteObjectWithId:(NSString *)objectId withObject:(id)object andCompletion:(void (^)(BOOL success, NSError *error))completionBlock;
 
 // PERMISSIONS //
 
